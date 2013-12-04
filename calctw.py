@@ -100,14 +100,16 @@ def process_tweet(tweet):
 	try:
 		# parse text (TODO: graphs?)
 		res = ctparser.parse(text)
-		# TODO send response
-		print text + "=" + res
+		# TODO: send response
+		# TODO: environment?
+		print text + "=" + res.value({ })
 	except:
 		return
 
 # test
-since_id = "284442361583509505"
-res = call_twitter_api("GET", url_get_mentions, { "count" : "20", "include_entities" : "true" })
-res = json.loads(res)
-for tweet in res:
-	process_tweet(tweet)
+#since_id = "284442361583509505"
+#res = call_twitter_api("GET", url_get_mentions, { "count" : "20", "include_entities" : "true" })
+#res = json.loads(res)
+#for tweet in res:
+#	process_tweet(tweet)
+print ctparser.parse(raw_input(": ")).value({ })
