@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import base64, ctparser, ctprivate, hashlib, json, random, socket, ssl, time
+import base64, ctparser, ctprivate, hashlib, json, random, socket, ssl, time, sys
 
 
 blksize = hashlib.sha1().block_size
@@ -8,9 +8,12 @@ blksize = hashlib.sha1().block_size
 trans_5c = "".join(chr(x ^ 0x5c) for x in xrange(256))
 trans_36 = "".join(chr(x ^ 0x36) for x in xrange(256))
 
-host = "api.twitter.com"
+rest_host = "api.twitter.com"
 url_get_mentions = "/1.1/statuses/mentions_timeline.json"
 url_post_update = "/1.1/statuses/update.json"
+
+stream_host = "userstream.twitter.com"
+url_stream_user = "/1.1/user.json"
 
 def hmac_sha1(key, msg):
 	if len(key) > blksize:
@@ -51,7 +54,7 @@ def sign(method, url, params):
 def gen_nonce(n):
 	return "".join(random.choice("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz") for i in xrange(0, n))
 
-def call_twitter_api(method, url, api_params):
+def open_oauth_stream(host, method, url, api_params):
 	oauth_params = { }
 	oauth_params["oauth_consumer_key"] = ctprivate.consumer_key
 	oauth_params["oauth_nonce"] = gen_nonce(32)
@@ -76,8 +79,13 @@ def call_twitter_api(method, url, api_params):
 
 	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	ssl_sock = ssl.wrap_socket(s, ca_certs = "/etc/ssl/certs/ca-certificates.crt", cert_reqs = ssl.CERT_REQUIRED)
-	ssl_sock.connect(("api.twitter.com", 443))
+	ssl_sock.connect((rest_host, 443))
 	ssl_sock.write(header)
+
+	return ssl_sock
+
+def call_twitter_api(method, url, api_params):
+	ssl_sock = open_oauth_stream(rest_host, method, url, api_params)
 	
 	data = ""
 	while True:
@@ -91,25 +99,57 @@ def call_twitter_api(method, url, api_params):
 	# parse out response header
 	return data[data.index("\r\n\r\n") + 4:]
 
-def process_tweet(tweet):
-	text = tweet[u"text"]
-	if len(text) <= 8 or text[:8] != "@calctw ":
-		return
-	text = text[8:]
+def stream_twitter_api(method, url, api_params):
+	ssl_sock = open_oauth_stream(stream_host, method, url, api_params)
 	
+	chunk_buf = ""
+	got_hdr = False
+	chunk_size = 0
+	stream = ""
+	while True:
+		tmp = ssl_sock.read()
+		chunk_buf += tmp
+		if not got_hdr and "\r\n\r\n" in chunk_buf:
+			got_hdr = True
+			# just ignore the header (TODO: parse out response?)
+			chunk_buf = chunk_buf[chunk_buf.find("\r\n\r\n") + 4:]
+		# rebuild the stream from the chunks
+		if chunk_size == 0:
+			# grab chunk size
+			n = chunk_buf.find("\r\n")
+			if n < 0:
+				continue
+			# check for empty lines
+			if n == 0:
+				chunk_buf = chunk_buf[2:]
+				continue
+			chunk_size = int(chunk_buf[:n], 16)
+			chunk_buf = chunk_buf[n + 2:]
+		if chunk_size != 0 and len(chunk_buf) >= chunk_size:
+			chunk = chunk_buf[:chunk_size]
+			chunk_buf = chunk_buf[chunk_size:]
+			chunk_size = 0
+			stream += chunk
+			while True:
+				n = stream.find("\r\n")
+				if n < 0:
+					break
+				ln = stream[:n]
+				stream = stream[n + 2:]
+				if ln != "":
+					yield json.loads(ln)
+
+def process_tweet(tweet):
 	try:
-		# parse text (TODO: graphs?)
-		res = ctparser.parse(text)
-		# TODO: send response
-		# TODO: environment?
-		print text + "=" + res.value({ })
+		text = tweet[u"text"]
+		if len(text) <= 8 or text[:8] != "@calctw ":
+			return
+		text = text[8:]
+
+		# TODO: process text
+		print text
 	except:
 		return
 
-# test
-#since_id = "284442361583509505"
-#res = call_twitter_api("GET", url_get_mentions, { "count" : "20", "include_entities" : "true" })
-#res = json.loads(res)
-#for tweet in res:
-#	process_tweet(tweet)
-print ctparser.parse(raw_input(": ")).value({ })
+for tweet in stream_twitter_api("GET", url_stream_user, { "with" : "user", "replies" : "all" }):
+	process_tweet(tweet)
