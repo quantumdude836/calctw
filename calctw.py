@@ -5,8 +5,8 @@ import base64, ctparser, ctprivate, hashlib, json, logging, random, socket, ssl,
 
 blksize = hashlib.sha1().block_size
 
-trans_5c = "".join(chr(x ^ 0x5c) for x in xrange(256))
-trans_36 = "".join(chr(x ^ 0x36) for x in xrange(256))
+trans_5c = "".join(chr(x ^ 0x5c) for x in range(256))
+trans_36 = "".join(chr(x ^ 0x36) for x in range(256))
 
 rest_host = "api.twitter.com"
 url_get_mentions = "/1.1/statuses/mentions_timeline.json"
