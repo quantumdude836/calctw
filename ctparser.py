@@ -32,7 +32,7 @@ def tokenize(line):
 				pos += 1
 			yield ("n", line[start:pos])
 		else:
-			raise SyntaxError
+			raise Exception("invalid character " + ch)
 
 
 # expression grammar:
@@ -229,8 +229,7 @@ def condense(ast):
 		rest.append(last)
 		return rest
 
-	print reduct
-	raise Exception("shouldn't be here")
+	raise Exception("shouldn't be here - reduct=" + str(reduct))
 
 
 def parse(text):

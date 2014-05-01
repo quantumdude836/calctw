@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import base64, ctparser, ctprivate, hashlib, json, random, socket, ssl, time, sys
+import base64, ctparser, ctprivate, hashlib, json, logging, random, socket, ssl, time, sys
 
 
 blksize = hashlib.sha1().block_size
@@ -87,7 +87,7 @@ def open_oauth_stream(host, method, url, api_params):
 
 	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	ssl_sock = ssl.wrap_socket(s, ca_certs = "/etc/ssl/certs/ca-certificates.crt", cert_reqs = ssl.CERT_REQUIRED)
-	ssl_sock.connect((rest_host, 443))
+	ssl_sock.connect((host, 443))
 	ssl_sock.write(header)
 
 	return ssl_sock
@@ -122,6 +122,7 @@ def stream_twitter_api(method, url, api_params):
 		if not got_hdr and "\r\n\r\n" in chunk_buf:
 			got_hdr = True
 			# just ignore the header (TODO: parse out response?)
+			logging.debug("header: " + chunk_buf[:chunk_buf.find("\r\n\r\n")])
 			chunk_buf = chunk_buf[chunk_buf.find("\r\n\r\n") + 4:]
 		# rebuild the stream from the chunks
 		if chunk_size == 0:
@@ -151,23 +152,37 @@ def stream_twitter_api(method, url, api_params):
 
 
 def process_tweet(tweet):
+	logging.debug("Processing tweet: " + json.dumps(tweet, indent=2))
 	try:
+		# extract tweet text
 		text = tweet[u"text"]
 		if len(text) <= 8 or text[:8] != "@calctw ":
 			return
 		text = text[8:]
 
-		# TODO: process text
-		print text
+		# parse text into tree
+		tree = ctparser.parse(text)
+		# evaluate (TODO: graph support)
+		val = tree.value({ })
+
+		# build result tweet (TODO: avoid double-posts)
+		logging.debug(val)
+		user = tweet[u"user"][u"screen_name"].encode("ascii")
+		tid = tweet[u"id_str"].encode("ascii")
+		stat = "@" + user + " " + str(val)
+		res = call_twitter_api("POST", url_post_update, { "status" : stat, "in_reply_to_status_id" : tid })
+		logging.debug("Post result: " + res)
 	except:
 		# catch any and all errors and ignore them (don't post reply)
-		print "Invalid tweet: " + tweet
+		logging.exception("Invalid tweet: " + json.dumps(tweet, indent=2))
 		return
 
 
-#for tweet in stream_twitter_api("GET", url_stream_user, { "with" : "user", "replies" : "all" }):
-#	process_tweet(tweet)
+logging.basicConfig(level=logging.DEBUG)
+
+for tweet in stream_twitter_api("GET", url_stream_user, { "with" : "user", "replies" : "all" }):
+	process_tweet(tweet)
 
 # test
-tree = ctparser.parse("1/(2^2+3*4)")
-print tree.value({ })
+#tree = ctparser.parse("1/(2^2+3*4)")
+#print tree.value({ })
