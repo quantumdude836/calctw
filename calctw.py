@@ -15,6 +15,7 @@ url_post_update = "/1.1/statuses/update.json"
 stream_host = "userstream.twitter.com"
 url_stream_user = "/1.1/user.json"
 
+
 def hmac_sha1(key, msg):
 	if len(key) > blksize:
 		key = hashlib.sha1(key).digest()
@@ -22,6 +23,7 @@ def hmac_sha1(key, msg):
 	opad = key.translate(trans_5c)
 	ipad = key.translate(trans_36)
 	return hashlib.sha1(opad + hashlib.sha1(ipad + msg).digest())
+
 
 def percent_encode(src):
 	dst = ""
@@ -32,6 +34,7 @@ def percent_encode(src):
 			dst += "%" + hex(ord(c))[2:].upper()
 	return dst
 
+
 def collect_params(params):
 	tmp = { }
 	for key in sorted(params):
@@ -39,11 +42,14 @@ def collect_params(params):
 	out = "&".join(key + "=" + tmp[key] for key in sorted(tmp))
 	return out
 
+
 def sig_base_string(method, url, pstr):
 	return method.upper() + "&" + percent_encode(url) + "&" + percent_encode(pstr)
 
+
 def signing_key():
 	return percent_encode(ctprivate.consumer_secret) + "&" + percent_encode(ctprivate.access_secret)
+
 
 def sign(method, url, params):
 	key = signing_key()
@@ -51,8 +57,10 @@ def sign(method, url, params):
 	res = hmac_sha1(key, msg).digest()
 	return base64.b64encode(res)
 
+
 def gen_nonce(n):
 	return "".join(random.choice("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz") for i in xrange(0, n))
+
 
 def open_oauth_stream(host, method, url, api_params):
 	oauth_params = { }
@@ -84,6 +92,7 @@ def open_oauth_stream(host, method, url, api_params):
 
 	return ssl_sock
 
+
 def call_twitter_api(method, url, api_params):
 	ssl_sock = open_oauth_stream(rest_host, method, url, api_params)
 	
@@ -98,6 +107,7 @@ def call_twitter_api(method, url, api_params):
 
 	# parse out response header
 	return data[data.index("\r\n\r\n") + 4:]
+
 
 def stream_twitter_api(method, url, api_params):
 	ssl_sock = open_oauth_stream(stream_host, method, url, api_params)
@@ -139,6 +149,7 @@ def stream_twitter_api(method, url, api_params):
 				if ln != "":
 					yield json.loads(ln)
 
+
 def process_tweet(tweet):
 	try:
 		text = tweet[u"text"]
@@ -149,7 +160,14 @@ def process_tweet(tweet):
 		# TODO: process text
 		print text
 	except:
+		# catch any and all errors and ignore them (don't post reply)
+		print "Invalid tweet: " + tweet
 		return
 
-for tweet in stream_twitter_api("GET", url_stream_user, { "with" : "user", "replies" : "all" }):
-	process_tweet(tweet)
+
+#for tweet in stream_twitter_api("GET", url_stream_user, { "with" : "user", "replies" : "all" }):
+#	process_tweet(tweet)
+
+# test
+tree = ctparser.parse("1/(2^2+3*4)")
+print tree.value({ })
