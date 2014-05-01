@@ -161,9 +161,9 @@ def build_ast(tokens):
 
 def print_ast(ast, indent):
 	if len(ast) == 2:
-		print " " * indent + ast[0] + ": " + ast[1]
+		logging.debug(" " * indent + ast[0] + ": " + ast[1])
 	else:
-		print " " * indent + ast[0]
+		logging.debug(" " * indent + ast[0])
 		for s in ast[2]:
 			print_ast(s, indent + 2)
 
