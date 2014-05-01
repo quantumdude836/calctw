@@ -59,7 +59,7 @@ def sign(method, url, params):
 
 
 def gen_nonce(n):
-	return "".join(random.choice("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz") for i in xrange(0, n))
+	return "".join(random.choice("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz") for i in range(0, n))
 
 
 def open_oauth_stream(host, method, url, api_params):
