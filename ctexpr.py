@@ -83,7 +83,8 @@ funcs = {
 	"cos":(True, lambda env, x: math.cos(x)),
 	"tan":(True, lambda env, x: math.tan(x)),
 	"abs":(True, lambda env, x: abs(x)),
-	"pi":(True, lambda env: math.pi)
+	"pi":(True, lambda env: math.pi),
+	"sqrt":(True, lambda env, x: math.sqrt(x))
 }
 
 # function expressions
